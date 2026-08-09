@@ -22,6 +22,7 @@
             height: 180px;
             object-fit: cover;
             border-radius: 6px;
+            background: #222;
         }
     </style>
 </head>
@@ -37,6 +38,7 @@
     for (let i = 1; i <= 100; i++) {
         const img = document.createElement('img');
         img.src = '/api/cover/' + i;
+        img.onerror = () => img.src = 'https://picsum.photos/200/300';
         grid.appendChild(img);
     }
 </script>
