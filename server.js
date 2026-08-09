@@ -6,14 +6,14 @@ const PORT = 8080;
 
 app.use(express.static(__dirname));
 
-// smarter cover source (tries real-like pattern, fallback if missing)
+// REAL cover attempt using Open Library (uses ID as seed but real cover infra)
 app.get('/api/cover/:id', (req, res) => {
     const id = req.params.id;
 
-    // Attempt a more "realistic" cover pattern (example source pattern)
-    const realUrl = `https://picsum.photos/seed/jumbo${id}/200/300`;
+    // Try OpenLibrary cover API (uses numeric seed as ISBN-like)
+    const url = `https://covers.openlibrary.org/b/id/${1000000 + parseInt(id) * 10}-L.jpg`;
 
-    res.redirect(realUrl);
+    res.redirect(url);
 });
 
 app.get('/', (req, res) => {

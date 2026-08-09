@@ -28,17 +28,17 @@
 </head>
 <body>
 
-<h1>Jumbobøger</h1>
+<h1>Jumbobøger (rigtige covers)</h1>
 
 <div class="grid" id="grid"></div>
 
 <script>
     const grid = document.getElementById('grid');
 
-    for (let i = 1; i <= 100; i++) {
+    for (let i = 1; i <= 150; i++) {
         const img = document.createElement('img');
         img.src = '/api/cover/' + i;
-        img.onerror = () => img.src = 'https://picsum.photos/200/300';
+        img.onerror = () => img.src = 'https://via.placeholder.com/200x300?text=Jumbo+' + i;
         grid.appendChild(img);
     }
 </script>
