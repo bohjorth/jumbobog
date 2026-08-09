@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<title>Jumbobøger Vælg Covers</title>
+<style>
+  body { background:#111; color:#fff; font-family:sans-serif; text-align:center; padding-bottom: 60px; }
+  h1 { margin-top: 30px; }
+  #toolbar {
+    position: sticky; top: 0; background:#111; padding: 10px; z-index: 10;
+    border-bottom: 1px solid #333; display:flex; flex-wrap:wrap; gap:16px;
+    align-items:center; justify-content:center; font-size: 1em;
+  }
+  #toolbar input[type="number"] {
+    width: 70px; padding: 4px 6px; border-radius: 4px; border:1px solid #555;
+    background:#222; color:#fff;
+  }
+  #toolbar button {
+    background:#333; color:#fff; border:1px solid #555; padding:5px 12px;
+    border-radius:4px; cursor:pointer;
+  }
+  #toolbar button:hover { background:#555; }
+  #toolbar label { display:flex; align-items:center; gap:6px; cursor:pointer; }
+  body.hide-done .book[data-done="true"] { display: none; }
+  .book { margin: 30px auto; max-width: 700px; }
+  .book h3 { display:flex; align-items:center; justify-content:center; gap:10px; }
+  .status { font-size: 0.8em; padding: 2px 8px; border-radius: 4px; }
+  .status.done { background:#2ecc71; color:#000; }
+  .status.pending { background:#555; }
+  .grid { display:flex; flex-wrap:wrap; gap:10px; justify-content:center; min-height: 190px; align-items:center; }
+  img { width:120px; height:180px; object-fit:cover; border:3px solid transparent; cursor:pointer; background:#222; }
+  img:hover { border-color: yellow; }
+  img.chosen { border-color: #2ecc71; }
+  .loading, .error { color:#888; font-size:0.9em; }
+  .error { color:#e74c3c; }
+  button.retry, button.skip {
+    background:#333; color:#fff; border:1px solid #555; padding:4px 10px;
+    border-radius:4px; cursor:pointer; font-size:0.8em;
+  }
+  button.retry:hover, button.skip:hover { background:#555; }
+</style>
+</head>
+<body>
+
+<div id="toolbar">
+  <span id="progress">Indlæser…</span>
+  <span>
+    <input type="number" id="jumpInput" min="1" placeholder="nr.">
+    <button id="jumpBtn">Gå til bog</button>
+  </span>
+  <button id="nextMissingBtn">Næste manglende ▸</button>
+  <label><input type="checkbox" id="hideDoneToggle"> Vis kun manglende</label>
+</div>
+<h1>Vælg rigtige covers</h1>
+<p>Klik på det rigtige cover – det gemmes automatisk. Bøger indlæses efterhånden som du scroller ned.</p>
+
+<div id="container"></div>
+
+<script>
+const TOTAL = 700;
+let savedIds = new Set();
+
+async function loadSavedCovers() {
+  try {
+    const res = await fetch('/api/covers');
+    const covers = await res.json();
+    savedIds = new Set(covers.map(c => String(c.id)));
+  } catch (e) {
+    console.error('Kunne ikke hente gemte covers', e);
+  }
+  updateProgress();
+}
+
+function updateProgress() {
+  document.getElementById('progress').textContent =
+    `${savedIds.size} / ${TOTAL} valgt`;
+}
+
+async function searchCovers(num) {
+  const res = await fetch(`/api/search/${num}`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || 'Søgning fejlede');
+  }
+  return res.json();
+}
+
+function renderBook(num) {
+  const div = document.createElement('div');
+  div.className = 'book';
+  div.id = 'book-' + num;
+
+  const isDone = savedIds.has(String(num));
+  div.dataset.done = isDone ? 'true' : 'false';
+  div.innerHTML = `
+    <h3>Bog ${num} <span class="status ${isDone ? 'done' : 'pending'}">${isDone ? '✓ Gemt' : 'Mangler'}</span></h3>
+    <div class="grid"><span class="loading">Søger covers…</span></div>
+  `;
+  return div;
+}
+
+async function fillBook(num, div) {
+  const grid = div.querySelector('.grid');
+  try {
+    const results = await searchCovers(num);
+    grid.innerHTML = '';
+    if (results.length === 0) {
+      grid.innerHTML = '<span class="error">Ingen resultater fundet</span>';
+    }
+    results.forEach(r => {
+      const img = document.createElement('img');
+      img.src = r.thumbnail || r.image;
+      img.title = r.title || '';
+      img.onclick = async () => {
+        img.style.opacity = 0.5;
+        try {
+          const saveRes = await fetch('/api/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: num, url: r.image })
+          });
+          const saveData = await saveRes.json();
+          if (!saveRes.ok) throw new Error(saveData.error || 'Kunne ikke gemme');
+
+          grid.querySelectorAll('img').forEach(i => i.classList.remove('chosen'));
+          img.classList.add('chosen');
+          img.style.opacity = 1;
+          savedIds.add(String(num));
+          div.dataset.done = 'true';
+          const statusEl = div.querySelector('.status');
+          statusEl.textContent = '✓ Gemt';
+          statusEl.className = 'status done';
+          updateProgress();
+        } catch (e) {
+          img.style.opacity = 1;
+          alert('Fejl ved gemning: ' + e.message);
+        }
+      };
+      grid.appendChild(img);
+    });
+
+    const skipBtn = document.createElement('button');
+    skipBtn.textContent = 'Søg igen';
+    skipBtn.className = 'skip';
+    skipBtn.onclick = () => {
+      grid.innerHTML = '<span class="loading">Søger covers…</span>';
+      fillBook(num, div);
+    };
+    div.appendChild(skipBtn);
+
+  } catch (e) {
+    grid.innerHTML = `<span class="error">Fejl: ${e.message}</span>`;
+    const retryBtn = document.createElement('button');
+    retryBtn.textContent = 'Prøv igen';
+    retryBtn.className = 'retry';
+    retryBtn.onclick = () => fillBook(num, div);
+    div.appendChild(retryBtn);
+  }
+}
+
+function build() {
+  const container = document.getElementById('container');
+  const books = [];
+
+  for (let i = 1; i <= TOTAL; i++) {
+    const div = renderBook(i);
+    container.appendChild(div);
+    books.push({ num: i, div, loaded: false });
+  }
+
+  // Lazy-load: only search for covers once a book scrolls into view
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const num = parseInt(entry.target.id.replace('book-', ''));
+        const book = books.find(b => b.num === num);
+        if (book && !book.loaded) {
+          book.loaded = true;
+          fillBook(num, book.div);
+        }
+      }
+    });
+  }, { rootMargin: '300px' });
+
+  books.forEach(b => observer.observe(b.div));
+}
+
+function jumpToBook(num) {
+  const el = document.getElementById('book-' + num);
+  if (!el) { alert('Bog ' + num + ' findes ikke (1–' + TOTAL + ')'); return; }
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  el.style.outline = '2px solid yellow';
+  setTimeout(() => { el.style.outline = ''; }, 1500);
+}
+
+function jumpToNextMissing() {
+  for (let i = 1; i <= TOTAL; i++) {
+    if (!savedIds.has(String(i))) {
+      jumpToBook(i);
+      return;
+    }
+  }
+  alert('Alle bøger er valgt! 🎉');
+}
+
+function setupToolbar() {
+  document.getElementById('jumpBtn').onclick = () => {
+    const num = parseInt(document.getElementById('jumpInput').value, 10);
+    if (num) jumpToBook(num);
+  };
+  document.getElementById('jumpInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('jumpBtn').click();
+  });
+  document.getElementById('nextMissingBtn').onclick = jumpToNextMissing;
+  document.getElementById('hideDoneToggle').onchange = (e) => {
+    document.body.classList.toggle('hide-done', e.target.checked);
+  };
+}
+
+(async function init() {
+  await loadSavedCovers();
+  setupToolbar();
+  build();
+})();
+</script>
+
+</body>
+</html>

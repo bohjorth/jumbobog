@@ -1,0 +1,16 @@
+[Unit]
+Description=Jumbobøger cover-picker
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/jumbobog
+ExecStart=/usr/bin/node /opt/jumbobog/server.js
+Restart=on-failure
+RestartSec=5
+
+User=jumboboger
+EnvironmentFile=/opt/jumbobog/.env
+
+[Install]
+WantedBy=multi-user.target
