@@ -1,21 +1,43 @@
 <!DOCTYPE html>
-<html lang="da">
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Jumbobog V3</title>
-<link rel="stylesheet" href="styles.css">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jumbo V5</title>
+<style>
+body{background:#111;color:#fff;font-family:sans-serif}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px}
+.card{background:#222;padding:5px}
+img{width:100%}
+</style>
 </head>
 <body>
 
-<header>
-<input id="search" placeholder="Søg nummer..." />
-</header>
-
+<input id="search" placeholder="Søg..." />
 <div id="grid" class="grid"></div>
 
-<div id="detail" class="detail hidden"></div>
+<script>
+const TOTAL=100;
+const grid=document.getElementById("grid");
+const search=document.getElementById("search");
 
-<script src="app.js"></script>
+function cover(id){
+  return `https://picsum.photos/200/300?random=${id}`;
+}
+
+function render(f=""){
+  grid.innerHTML="";
+  for(let i=1;i<=TOTAL;i++){
+    if(f && !i.toString().includes(f)) continue;
+    let d=document.createElement("div");
+    d.className="card";
+    d.innerHTML=`<img src="${cover(i)}"><div>${i}</div>`;
+    grid.appendChild(d);
+  }
+}
+
+search.oninput=()=>render(search.value);
+render();
+</script>
+
 </body>
 </html>
