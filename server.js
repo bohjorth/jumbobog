@@ -8,6 +8,7 @@ const path = require("path");
 const PORT = process.env.PORT || 3000;
 const DATA_DIR = path.join(__dirname, "data");
 const DATA_FILE = path.join(DATA_DIR, "collection.json");
+const IMAGES_DIR = path.join(DATA_DIR, "images");
 
 const TOTAL_BOOKS = 552; // ret op hvis der udkommer flere numre
 
@@ -56,6 +57,7 @@ function migrateEntry(old) {
       edition: old.edition || "",
       condition: old.condition || "",
       notes: old.notes || "",
+      image: "",
     });
   }
   return { title: (old && old.title) || "", copies };
@@ -99,8 +101,20 @@ function saveData() {
 }
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: "12mb" }));
 app.use(express.static(path.join(__dirname, "public")));
+app.use("/images", express.static(IMAGES_DIR));
+
+function ensureImagesDir() {
+  if (!fs.existsSync(IMAGES_DIR)) fs.mkdirSync(IMAGES_DIR, { recursive: true });
+}
+
+function deleteImageFile(imagePath) {
+  if (!imagePath) return;
+  const filename = path.basename(imagePath);
+  const full = path.join(IMAGES_DIR, filename);
+  fs.unlink(full, () => {}); // ignorér fejl (fx allerede slettet)
+}
 
 app.get("/api/state", (req, res) => {
   res.json(data);
@@ -123,6 +137,7 @@ app.post("/api/entries/:num/copies", (req, res) => {
     edition: req.body.edition || "",
     condition: req.body.condition || "",
     notes: req.body.notes || "",
+    image: "",
   };
   data.entries[num].copies.push(copy);
   saveData();
@@ -147,7 +162,46 @@ app.delete("/api/entries/:num/copies/:copyId", (req, res) => {
   const copyId = parseInt(req.params.copyId, 10);
   const entry = data.entries[num];
   if (!entry) return res.status(404).json({ error: "Ukendt nummer" });
+  const existing = entry.copies.find((c) => c.id === copyId);
+  if (existing && existing.image) deleteImageFile(existing.image);
   entry.copies = entry.copies.filter((c) => c.id !== copyId);
+  saveData();
+  res.json({ ok: true });
+});
+
+app.post("/api/entries/:num/copies/:copyId/image", (req, res) => {
+  const num = parseInt(req.params.num, 10);
+  const copyId = parseInt(req.params.copyId, 10);
+  const entry = data.entries[num];
+  if (!entry) return res.status(404).json({ error: "Ukendt nummer" });
+  const copy = entry.copies.find((c) => c.id === copyId);
+  if (!copy) return res.status(404).json({ error: "Ukendt eksemplar" });
+
+  const dataUrl = req.body.dataUrl || "";
+  const match = dataUrl.match(/^data:(image\/(png|jpeg|jpg|webp|gif));base64,(.+)$/);
+  if (!match) return res.status(400).json({ error: "Ugyldigt billedformat" });
+  const ext = match[2] === "jpeg" ? "jpg" : match[2];
+  const buffer = Buffer.from(match[3], "base64");
+  if (buffer.length > 8 * 1024 * 1024) return res.status(413).json({ error: "Billedet er for stort (maks 8 MB)" });
+
+  ensureImagesDir();
+  if (copy.image) deleteImageFile(copy.image);
+  const filename = `n${num}-${copyId}-${Date.now()}.${ext}`;
+  fs.writeFileSync(path.join(IMAGES_DIR, filename), buffer);
+  copy.image = `/images/${filename}`;
+  saveData();
+  res.json({ image: copy.image });
+});
+
+app.delete("/api/entries/:num/copies/:copyId/image", (req, res) => {
+  const num = parseInt(req.params.num, 10);
+  const copyId = parseInt(req.params.copyId, 10);
+  const entry = data.entries[num];
+  if (!entry) return res.status(404).json({ error: "Ukendt nummer" });
+  const copy = entry.copies.find((c) => c.id === copyId);
+  if (!copy) return res.status(404).json({ error: "Ukendt eksemplar" });
+  if (copy.image) deleteImageFile(copy.image);
+  copy.image = "";
   saveData();
   res.json({ ok: true });
 });

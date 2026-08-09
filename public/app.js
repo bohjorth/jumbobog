@@ -73,6 +73,25 @@
     return `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(q)}`;
   }
 
+  function fileToDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function uploadCopyImage(num, copyId, file) {
+    const dataUrl = await fileToDataUrl(file);
+    const res = await fetch(`/api/entries/${num}/copies/${copyId}/image`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ dataUrl }),
+    });
+    if (!res.ok) throw new Error("upload failed");
+    return (await res.json()).image;
+  }
+
   let saveTimers = {};
   function scheduleSaveTitle(num) {
     clearTimeout(saveTimers["t" + num]);
@@ -389,6 +408,14 @@
 
     const addBtn = el("button", { class: "add-copy-btn" + (owned ? "" : " add-copy-btn-empty"), text: owned ? "+ Eksemplar" : "+ Jeg ejer denne" });
     const copiesBox = el("div", { class: "copies-list" });
+    const headThumbs = el("div", { class: "head-thumbs" });
+
+    function refreshHeadThumbs() {
+      headThumbs.innerHTML = "";
+      e.copies.filter((c) => c.image).forEach((c) => {
+        headThumbs.appendChild(el("img", { class: "head-thumb-img", src: c.image, alt: "omslag" }));
+      });
+    }
 
     const findLink = el("a", {
       class: "find-link", text: "🔍 Find omslag", target: "_blank", rel: "noreferrer",
@@ -413,6 +440,7 @@
       countBadge.textContent = e.copies.length ? `${e.copies.length} stk.` : "0 stk.";
       addBtn.textContent = e.copies.length > 0 ? "+ Eksemplar" : "+ Jeg ejer denne";
       addBtn.classList.toggle("add-copy-btn-empty", e.copies.length === 0);
+      refreshHeadThumbs();
       renderHeader();
     }
 
@@ -431,17 +459,71 @@
       refreshCard();
     });
 
-    const head = el("div", { class: "book-card-head" }, [numBadge, titleInput, countBadge, addBtn]);
+    const head = el("div", { class: "book-card-head" }, [numBadge, headThumbs, titleInput, countBadge, addBtn]);
     const actions = el("div", { class: "book-card-actions" }, [findLink, copyBtn]);
     card.appendChild(head);
     card.appendChild(actions);
     card.appendChild(copiesBox);
     renderCopies();
+    refreshHeadThumbs();
     return card;
   }
 
-  function buildCopyRow(num, e, copy, onChange) {
+  function buildCopyRow(num, e, copy, onCopyChanged) {
     const row = el("div", { class: "copy-row" });
+
+    const fileInput = el("input", { type: "file", accept: "image/*", class: "hidden-file-input" });
+
+    const thumbWrap = el("div", { class: "thumb-wrap" });
+    function renderThumb() {
+      thumbWrap.innerHTML = "";
+      if (copy.image) {
+        const img = el("img", { class: "thumb-img", src: copy.image, alt: "omslag" });
+        const rm = el("button", { class: "thumb-remove", text: "×", title: "Fjern billede" });
+        rm.addEventListener("click", async (ev) => {
+          ev.stopPropagation();
+          copy.image = "";
+          renderThumb();
+          onCopyChanged();
+          await fetch(`/api/entries/${num}/copies/${copy.id}/image`, { method: "DELETE" }).catch(() => {});
+        });
+        thumbWrap.appendChild(img);
+        thumbWrap.appendChild(rm);
+      } else {
+        const placeholder = el("div", {
+          class: "thumb-placeholder", text: "📎", tabindex: "0",
+          title: "Klik for at vælge en fil, eller indsæt et kopieret billede med Ctrl+V",
+        });
+        placeholder.addEventListener("click", () => fileInput.click());
+        placeholder.addEventListener("paste", handlePasteEvent);
+        thumbWrap.appendChild(placeholder);
+      }
+    }
+
+    async function handleFile(file) {
+      if (!file || !file.type.startsWith("image/")) return;
+      const original = thumbWrap.querySelector(".thumb-placeholder");
+      if (original) original.textContent = "…";
+      try {
+        copy.image = await uploadCopyImage(num, copy.id, file);
+      } catch (e2) {
+        alert("Kunne ikke gemme billedet — prøv igen eller vælg en mindre fil.");
+      }
+      renderThumb();
+      onCopyChanged();
+    }
+    function handlePasteEvent(ev) {
+      const items = (ev.clipboardData && ev.clipboardData.items) || [];
+      for (const item of items) {
+        if (item.type && item.type.startsWith("image/")) {
+          ev.preventDefault();
+          handleFile(item.getAsFile());
+          return;
+        }
+      }
+    }
+    fileInput.addEventListener("change", (ev) => { handleFile(ev.target.files[0]); fileInput.value = ""; });
+    renderThumb();
 
     const oplaegInput = el("input", { class: "text-input", placeholder: "Oplæg (hvis anderledes end ovenfor)", value: copy.oplaeg || "" });
     const editionInput = el("input", { class: "text-input", placeholder: "fx 3. oplag, 2007", value: copy.edition || "" });
@@ -471,6 +553,8 @@
       await fetch(`/api/entries/${num}/copies/${copy.id}`, { method: "DELETE" }).catch(() => {});
     });
 
+    row.appendChild(thumbWrap);
+    row.appendChild(fileInput);
     row.appendChild(oplaegInput);
     row.appendChild(editionInput);
     row.appendChild(select);

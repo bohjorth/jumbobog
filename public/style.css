@@ -203,7 +203,7 @@ a { color: var(--blue); }
 .copies-hint { font-size: 12px; color: var(--ink-soft); font-family: Georgia, serif; font-style: italic; }
 .copy-row {
   display: grid;
-  grid-template-columns: 1.3fr 1fr 150px 26px;
+  grid-template-columns: 56px 1.3fr 1fr 150px 26px;
   gap: 6px;
   align-items: center;
   background: #fff;
@@ -211,6 +211,24 @@ a { color: var(--blue); }
   border-radius: 5px;
   padding: 5px 6px;
 }
+.hidden-file-input { display: none; }
+
+.thumb-wrap { width: 48px; height: 64px; position: relative; }
+.thumb-img { width: 48px; height: 64px; object-fit: cover; border: 2px solid var(--ink); border-radius: 4px; display: block; }
+.thumb-placeholder {
+  width: 48px; height: 64px; border: 2px dashed var(--line); border-radius: 4px;
+  display: flex; align-items: center; justify-content: center; font-size: 16px;
+  cursor: pointer; background: var(--paper); color: var(--ink-soft);
+}
+.thumb-placeholder:focus { outline: 2px solid var(--teal); }
+.thumb-remove {
+  position: absolute; top: -6px; right: -6px; width: 18px; height: 18px;
+  border-radius: 50%; border: 1.5px solid var(--ink); background: var(--red); color: #fff;
+  font-size: 11px; line-height: 1; cursor: pointer; font-weight: 900; padding: 0;
+}
+
+.head-thumbs { display: flex; gap: 3px; flex-shrink: 0; }
+.head-thumb-img { width: 20px; height: 27px; object-fit: cover; border: 1.5px solid var(--ink); border-radius: 3px; }
 
 .col-num { font-family: 'Courier New', ui-monospace, monospace; font-size: 13px; color: var(--ink-soft); }
 .text-input {
@@ -245,7 +263,8 @@ a { color: var(--blue); }
   .h1 { font-size: 22px; }
   .book-card-head { flex-wrap: wrap; }
   .title-input { flex: 1 1 100%; order: 3; }
-  .copy-row { grid-template-columns: 1fr; }
+  .copy-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .copy-row .text-input, .copy-row .select-input { flex: 1 1 45%; }
   .jb-row-extra { grid-template-columns: 22px 1fr; row-gap: 4px; }
   .jb-head { display: none; }
   .jb-row-extra > *:nth-child(3), .jb-row-extra > *:nth-child(4), .jb-row-extra > *:nth-child(5) { grid-column: 2; }
