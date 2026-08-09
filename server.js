@@ -39,15 +39,26 @@ const SEED_TITLES = {
 function defaultData() {
   const entries = {};
   for (let n = 1; n <= TOTAL_BOOKS; n++) {
-    entries[n] = {
-      title: SEED_TITLES[n] || "",
-      edition: "",
-      condition: "",
-      owned: false,
-      notes: "",
-    };
+    entries[n] = { title: SEED_TITLES[n] || "", copies: [] };
   }
   return { entries, extras: [], totalBooks: TOTAL_BOOKS };
+}
+
+// Migrerer et ældre entry-format ({title, edition, condition, owned, notes})
+// til det nye ({title, copies: [...]}), så eksisterende data ikke går tabt.
+function migrateEntry(old) {
+  if (old && Array.isArray(old.copies)) return old;
+  const copies = [];
+  if (old && old.owned) {
+    copies.push({
+      id: Date.now() + Math.floor(Math.random() * 100000),
+      oplaeg: "",
+      edition: old.edition || "",
+      condition: old.condition || "",
+      notes: old.notes || "",
+    });
+  }
+  return { title: (old && old.title) || "", copies };
 }
 
 function loadData() {
@@ -60,12 +71,16 @@ function loadData() {
   try {
     const raw = fs.readFileSync(DATA_FILE, "utf8");
     const parsed = JSON.parse(raw);
-    // Udvid hvis TOTAL_BOOKS er hævet siden sidst
     const base = defaultData();
-    parsed.entries = { ...base.entries, ...parsed.entries };
-    parsed.extras = parsed.extras || [];
-    parsed.totalBooks = TOTAL_BOOKS;
-    return parsed;
+    const entries = { ...base.entries };
+    for (const num in parsed.entries || {}) {
+      entries[num] = migrateEntry(parsed.entries[num]);
+    }
+    return {
+      entries,
+      extras: parsed.extras || [],
+      totalBooks: TOTAL_BOOKS,
+    };
   } catch (e) {
     console.error("Kunne ikke læse data-fil, starter forfra:", e);
     return defaultData();
@@ -94,12 +109,47 @@ app.get("/api/state", (req, res) => {
 app.patch("/api/entries/:num", (req, res) => {
   const num = parseInt(req.params.num, 10);
   if (!data.entries[num]) return res.status(404).json({ error: "Ukendt nummer" });
-  const allowed = ["title", "edition", "condition", "owned", "notes"];
-  for (const key of allowed) {
-    if (key in req.body) data.entries[num][key] = req.body[key];
-  }
+  if ("title" in req.body) data.entries[num].title = req.body.title;
   saveData();
   res.json(data.entries[num]);
+});
+
+app.post("/api/entries/:num/copies", (req, res) => {
+  const num = parseInt(req.params.num, 10);
+  if (!data.entries[num]) return res.status(404).json({ error: "Ukendt nummer" });
+  const copy = {
+    id: Date.now() + Math.floor(Math.random() * 100000),
+    oplaeg: req.body.oplaeg || "",
+    edition: req.body.edition || "",
+    condition: req.body.condition || "",
+    notes: req.body.notes || "",
+  };
+  data.entries[num].copies.push(copy);
+  saveData();
+  res.json(copy);
+});
+
+app.patch("/api/entries/:num/copies/:copyId", (req, res) => {
+  const num = parseInt(req.params.num, 10);
+  const copyId = parseInt(req.params.copyId, 10);
+  const entry = data.entries[num];
+  if (!entry) return res.status(404).json({ error: "Ukendt nummer" });
+  const copy = entry.copies.find((c) => c.id === copyId);
+  if (!copy) return res.status(404).json({ error: "Ukendt eksemplar" });
+  const allowed = ["oplaeg", "edition", "condition", "notes"];
+  for (const key of allowed) if (key in req.body) copy[key] = req.body[key];
+  saveData();
+  res.json(copy);
+});
+
+app.delete("/api/entries/:num/copies/:copyId", (req, res) => {
+  const num = parseInt(req.params.num, 10);
+  const copyId = parseInt(req.params.copyId, 10);
+  const entry = data.entries[num];
+  if (!entry) return res.status(404).json({ error: "Ukendt nummer" });
+  entry.copies = entry.copies.filter((c) => c.id !== copyId);
+  saveData();
+  res.json({ ok: true });
 });
 
 app.post("/api/import", (req, res) => {

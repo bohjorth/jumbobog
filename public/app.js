@@ -47,15 +47,28 @@
   let ui = { search: "", onlyOwned: false, openGroups: new Set(), showImport: false, showSources: false };
 
   let saveTimers = {};
-  function scheduleSaveEntry(num) {
-    clearTimeout(saveTimers["e" + num]);
-    saveTimers["e" + num] = setTimeout(async () => {
+  function scheduleSaveTitle(num) {
+    clearTimeout(saveTimers["t" + num]);
+    saveTimers["t" + num] = setTimeout(async () => {
       setSaving(true);
-      const e = state.entries[num];
       await fetch(`/api/entries/${num}`, {
         method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: e.title, edition: e.edition, condition: e.condition, owned: e.owned, notes: e.notes }),
+        body: JSON.stringify({ title: state.entries[num].title }),
       }).catch(() => {});
+      setSaving(false);
+    }, 400);
+  }
+  function scheduleSaveCopy(num, copyId) {
+    clearTimeout(saveTimers["c" + num + "-" + copyId]);
+    saveTimers["c" + num + "-" + copyId] = setTimeout(async () => {
+      setSaving(true);
+      const copy = state.entries[num].copies.find((c) => c.id === copyId);
+      if (copy) {
+        await fetch(`/api/entries/${num}/copies/${copyId}`, {
+          method: "PATCH", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ oplaeg: copy.oplaeg, edition: copy.edition, condition: copy.condition, notes: copy.notes }),
+        }).catch(() => {});
+      }
       setSaving(false);
     }, 400);
   }
@@ -94,7 +107,12 @@
 
   function ownedTotal() {
     let c = 0;
-    for (const k in state.entries) if (state.entries[k].owned) c++;
+    for (const k in state.entries) if (state.entries[k].copies.length > 0) c++;
+    return c + state.extras.filter((x) => x.owned).length;
+  }
+  function copiesTotal() {
+    let c = 0;
+    for (const k in state.entries) c += state.entries[k].copies.length;
     return c + state.extras.filter((x) => x.owned).length;
   }
 
@@ -137,12 +155,13 @@
       el("div", { class: "eyebrow", text: "SAMLEROVERSIGT" }),
       el("h1", { class: "h1", text: "Jumbobog-samlingen" }),
     ]);
-    const tally = el("div", { class: "tally" }, [
+    const badge = el("div", { class: "tally-badge" }, [
       el("span", { class: "tally-num", text: String(ownedTotal()) }),
-      el("span", { class: "tally-den", text: ` / ${TOTAL_BOOKS + state.extras.length}` }),
+      el("span", { class: "tally-den", text: `/${TOTAL_BOOKS + state.extras.length}` }),
     ]);
+    const sub = el("div", { class: "tally-sub", text: `${copiesTotal()} eksemplar(er) i alt` });
     savingEl = el("div", { class: "save-state", text: "Gemt" });
-    const right = el("div", { class: "header-right" }, [tally, savingEl]);
+    const right = el("div", { class: "header-right" }, [badge, sub, savingEl]);
     headerBox.appendChild(left);
     headerBox.appendChild(right);
   }
@@ -157,16 +176,18 @@
       const bar = el("div", { class: "spine-bar" });
       updateBar(bar, e);
       barRefs[n] = bar;
-      bar.title = `Nr. ${n}${e.title ? " – " + e.title : ""}${e.owned ? " (ejet)" : ""}`;
+      bar.title = `Nr. ${n}${e.title ? " – " + e.title : ""}${e.copies.length ? ` (${e.copies.length} stk.)` : ""}`;
       strip.appendChild(bar);
     }
     spineBox.appendChild(strip);
     spineBox.appendChild(el("div", { class: "spine-caption", text: "Ryggen på din reol — hver streg er ét nummer. Farven viser standen på de bøger, du ejer." }));
   }
   function updateBar(bar, e) {
-    const color = e.owned ? conditionColor(e.condition === "" ? null : e.condition) : "var(--spine-empty)";
+    const owned = e.copies.length > 0;
+    const best = owned ? e.copies.reduce((m, c) => (c.condition !== "" && Number(c.condition) > m ? Number(c.condition) : m), -1) : -1;
+    const color = owned ? conditionColor(best >= 0 ? best : null) : "var(--spine-empty)";
     bar.style.background = color;
-    bar.style.opacity = e.owned ? "1" : "0.55";
+    bar.style.opacity = owned ? "1" : "0.55";
   }
 
   /* ---------------- controls ---------------- */
@@ -290,7 +311,7 @@
 
   function groupStats(from, to) {
     let owned = 0;
-    for (let n = from; n <= to; n++) if (state.entries[n].owned) owned++;
+    for (let n = from; n <= to; n++) if (state.entries[n].copies.length > 0) owned++;
     return { owned, total: to - from + 1 };
   }
 
@@ -314,80 +335,104 @@
   }
 
   function buildTable(from, to) {
-    const wrap = el("div");
-    const head = el("div", { class: "jb-head" }, [
-      el("div"), el("div", { text: "Nr." }), el("div", { text: "Oplæg / titel" }),
-      el("div", { text: "Udgave / oplag" }), el("div", { text: "Stand" }),
-    ]);
-    wrap.appendChild(head);
+    const wrap = el("div", { class: "book-list" });
     let any = false;
     for (let n = from; n <= to; n++) {
       const e = state.entries[n];
       if (!matchesSearch(n, e)) continue;
-      if (ui.onlyOwned && !e.owned) continue;
+      if (ui.onlyOwned && e.copies.length === 0) continue;
       any = true;
-      wrap.appendChild(buildRow(n, e));
+      wrap.appendChild(buildBookCard(n, e));
     }
     if (!any) wrap.appendChild(el("div", { class: "empty-row", text: "Ingen numre matcher i denne gruppe." }));
     return wrap;
   }
 
-  function buildRow(num, e) {
-    const row = el("div", { class: "jb-row" + (e.owned ? " owned" : "") });
+  function buildBookCard(num, e) {
+    const owned = e.copies.length > 0;
+    const card = el("div", { class: "book-card" + (owned ? " owned" : "") });
 
-    const cb = el("input", { type: "checkbox" });
-    cb.checked = e.owned;
+    const numBadge = el("div", { class: "book-num-badge", text: "#" + num });
+    const titleInput = el("input", { class: "text-input title-input", placeholder: "Titel / oplæg…", value: e.title });
+    titleInput.addEventListener("input", (ev) => {
+      e.title = ev.target.value;
+      barRefs[num].title = `Nr. ${num}${e.title ? " – " + e.title : ""}${e.copies.length ? ` (${e.copies.length} stk.)` : ""}`;
+      scheduleSaveTitle(num);
+    });
 
-    const numCell = el("div", { class: "col-num", text: String(num) });
+    const addBtn = el("button", { class: "add-copy-btn", text: "+ Eksemplar" });
+    const copiesBox = el("div", { class: "copies-list" });
 
-    const titleInput = el("input", { class: "text-input", placeholder: "Titel…", value: e.title });
-    const editionInput = el("input", { class: "text-input", placeholder: "fx 3. oplag, 2007", value: e.edition });
-    editionInput.disabled = !e.owned;
+    function renderCopies() {
+      copiesBox.innerHTML = "";
+      if (e.copies.length === 0) return;
+      e.copies.forEach((copy) => copiesBox.appendChild(buildCopyRow(num, e, copy, refreshCard)));
+    }
+    function refreshCard() {
+      card.classList.toggle("owned", e.copies.length > 0);
+      updateBar(barRefs[num], e);
+      barRefs[num].title = `Nr. ${num}${e.title ? " – " + e.title : ""}${e.copies.length ? ` (${e.copies.length} stk.)` : ""}`;
+      countBadge.textContent = e.copies.length ? `${e.copies.length} stk.` : "0 stk.";
+      renderHeader();
+    }
 
+    const countBadge = el("span", { class: "copy-count", text: e.copies.length ? `${e.copies.length} stk.` : "0 stk." });
+
+    addBtn.addEventListener("click", async () => {
+      setSaving(true);
+      const res = await fetch(`/api/entries/${num}/copies`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ oplaeg: "", edition: "", condition: "", notes: "" }),
+      });
+      const copy = await res.json();
+      e.copies.push(copy);
+      setSaving(false);
+      renderCopies();
+      refreshCard();
+    });
+
+    const head = el("div", { class: "book-card-head" }, [numBadge, titleInput, countBadge, addBtn]);
+    card.appendChild(head);
+    card.appendChild(copiesBox);
+    renderCopies();
+    return card;
+  }
+
+  function buildCopyRow(num, e, copy, onChange) {
+    const row = el("div", { class: "copy-row" });
+
+    const oplaegInput = el("input", { class: "text-input", placeholder: "Oplæg (hvis anderledes end ovenfor)", value: copy.oplaeg || "" });
+    const editionInput = el("input", { class: "text-input", placeholder: "fx 3. oplag, 2007", value: copy.edition || "" });
     const select = el("select", { class: "select-input" });
-    select.disabled = !e.owned;
     select.appendChild(el("option", { value: "", text: "–" }));
     CONDITION_LABELS.forEach(([v, label]) => {
       const opt = el("option", { value: String(v), text: label });
-      if (String(e.condition) === String(v)) opt.selected = true;
+      if (String(copy.condition) === String(v)) opt.selected = true;
       select.appendChild(opt);
     });
-    select.style.borderColor = e.owned ? conditionColor(e.condition === "" ? null : e.condition) : "var(--line)";
+    select.style.borderColor = conditionColor(copy.condition === "" ? null : copy.condition);
+    const removeBtn = el("button", { class: "remove-btn", text: "×", title: "Fjern eksemplar" });
 
-    cb.addEventListener("change", (ev) => {
-      e.owned = ev.target.checked;
-      row.classList.toggle("owned", e.owned);
-      editionInput.disabled = !e.owned;
-      select.disabled = !e.owned;
-      select.style.borderColor = e.owned ? conditionColor(e.condition === "" ? null : e.condition) : "var(--line)";
-      updateBar(barRefs[num], e);
-      barRefs[num].title = `Nr. ${num}${e.title ? " – " + e.title : ""}${e.owned ? " (ejet)" : ""}`;
-      renderHeader();
-      scheduleSaveEntry(num);
-    });
-    titleInput.addEventListener("input", (ev) => {
-      e.title = ev.target.value;
-      barRefs[num].title = `Nr. ${num}${e.title ? " – " + e.title : ""}${e.owned ? " (ejet)" : ""}`;
-      scheduleSaveEntry(num);
-    });
-    editionInput.addEventListener("input", (ev) => { e.edition = ev.target.value; scheduleSaveEntry(num); });
+    oplaegInput.addEventListener("input", (ev) => { copy.oplaeg = ev.target.value; scheduleSaveCopy(num, copy.id); });
+    editionInput.addEventListener("input", (ev) => { copy.edition = ev.target.value; scheduleSaveCopy(num, copy.id); });
     select.addEventListener("change", (ev) => {
-      e.condition = ev.target.value;
-      select.style.borderColor = conditionColor(e.condition === "" ? null : e.condition);
+      copy.condition = ev.target.value;
+      select.style.borderColor = conditionColor(copy.condition === "" ? null : copy.condition);
       updateBar(barRefs[num], e);
-      scheduleSaveEntry(num);
+      scheduleSaveCopy(num, copy.id);
+    });
+    removeBtn.addEventListener("click", async () => {
+      e.copies = e.copies.filter((c) => c.id !== copy.id);
+      updateBar(barRefs[num], e);
+      renderHeader();
+      renderGroups();
+      await fetch(`/api/entries/${num}/copies/${copy.id}`, { method: "DELETE" }).catch(() => {});
     });
 
-    const checkCell = el("div", {}, [cb]);
-    const titleCell = el("div", {}, [titleInput]);
-    const editionCell = el("div", {}, [editionInput]);
-    const conditionCell = el("div", {}, [select]);
-
-    row.appendChild(checkCell);
-    row.appendChild(numCell);
-    row.appendChild(titleCell);
-    row.appendChild(editionCell);
-    row.appendChild(conditionCell);
+    row.appendChild(oplaegInput);
+    row.appendChild(editionInput);
+    row.appendChild(select);
+    row.appendChild(removeBtn);
     return row;
   }
 
