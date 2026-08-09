@@ -40,6 +40,7 @@ function downloadFile(url, filePath) {
 async function getRealCover(id, res) {
   const file = path.join(coverDir, id + '.jpg');
 
+  // hvis cached
   if (fs.existsSync(file)) {
     return serveFile(res, file, "image/jpeg");
   }
@@ -48,6 +49,7 @@ async function getRealCover(id, res) {
     const url = `https://comicwiki.dk/wiki/Jumbobog_${id}`;
     const html = await fetchPage(url);
 
+    // forsøg at finde billede
     const match = html.match(/<img[^>]+src="([^"]+)"/);
 
     if (!match) throw "no image";
@@ -64,10 +66,10 @@ async function getRealCover(id, res) {
 
   } catch (e) {
     console.log("Cover fejl:", id, e);
-    res.writeHead(302, {
-      Location: `https://picsum.photos/300/450?random=${id}`
-    });
-    res.end();
+
+    // 🔥 STABIL FALLBACK (ALTID BILLEDE)
+    res.writeHead(200, { "Content-Type": "text/html" });
+    return res.end(`<img src="https://picsum.photos/300/450?random=${id}" />`);
   }
 }
 
@@ -101,7 +103,14 @@ http.createServer((req,res)=>{
   let filePath = path.join(__dirname, file);
   let ext = path.extname(filePath);
 
-  let types = {".js":"text/javascript",".css":"text/css",".json":"application/json",".jpg":"image/jpeg",".png":"image/png"};
+  let types = {
+    ".js":"text/javascript",
+    ".css":"text/css",
+    ".json":"application/json",
+    ".jpg":"image/jpeg",
+    ".png":"image/png"
+  };
+
   serveFile(res, filePath, types[ext] || "text/html");
 
 }).listen(port, ()=>console.log("Running on "+port));
