@@ -2,12 +2,13 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Jumbo V5</title>
+<title>Jumbo V6</title>
 <style>
 body{background:#111;color:#fff;font-family:sans-serif}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px}
 .card{background:#222;padding:5px}
 img{width:100%}
+button{margin-top:5px}
 </style>
 </head>
 <body>
@@ -16,6 +17,21 @@ img{width:100%}
 <div id="grid" class="grid"></div>
 
 <script>
+let data = {};
+
+async function load(){
+  let res = await fetch("/api/jumbo");
+  data = await res.json();
+  render();
+}
+
+async function save(){
+  await fetch("/api/jumbo", {
+    method:"POST",
+    body: JSON.stringify(data)
+  });
+}
+
 const TOTAL=100;
 const grid=document.getElementById("grid");
 const search=document.getElementById("search");
@@ -24,19 +40,33 @@ function cover(id){
   return `https://picsum.photos/200/300?random=${id}`;
 }
 
+function toggle(id){
+  data[id] = data[id] || {};
+  data[id].owned = !data[id].owned;
+  save();
+  render(search.value);
+}
+
 function render(f=""){
   grid.innerHTML="";
   for(let i=1;i<=TOTAL;i++){
     if(f && !i.toString().includes(f)) continue;
+
+    let owned = data[i]?.owned ? "🟢" : "⚪";
+
     let d=document.createElement("div");
     d.className="card";
-    d.innerHTML=`<img src="${cover(i)}"><div>${i}</div>`;
+    d.innerHTML=`
+      <img src="${cover(i)}">
+      <div>${owned} ${i}</div>
+      <button onclick="toggle(${i})">Toggle</button>
+    `;
     grid.appendChild(d);
   }
 }
 
 search.oninput=()=>render(search.value);
-render();
+load();
 </script>
 
 </body>
