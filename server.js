@@ -37,7 +37,7 @@ http.createServer((req,res)=>{
   let filePath = path.join(__dirname, file);
   let ext = path.extname(filePath);
 
-  let types = {".js":"text/javascript",".css":"text/css",".json":"application/json"};
+  let types = {".js":"text/javascript",".css":"text/css",".json":"application/json",".jpg":"image/jpeg",".png":"image/png"};
   serveFile(res, filePath, types[ext] || "text/html");
 
 }).listen(port, ()=>console.log("Running on "+port));
