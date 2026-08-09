@@ -40,7 +40,6 @@ function downloadFile(url, filePath) {
 async function getRealCover(id, res) {
   const file = path.join(coverDir, id + '.jpg');
 
-  // hvis cached
   if (fs.existsSync(file)) {
     return serveFile(res, file, "image/jpeg");
   }
@@ -49,25 +48,24 @@ async function getRealCover(id, res) {
     const url = `https://comicwiki.dk/wiki/Jumbobog_${id}`;
     const html = await fetchPage(url);
 
-    // forsøg at finde billede
-    const match = html.match(/<img[^>]+src="([^"]+)"/);
+    const matches = [...html.matchAll(/<img[^>]+src="([^"]+)"/g)];
+    if (!matches.length) throw "no image";
 
-    if (!match) throw "no image";
-
-    let imgUrl = match[1];
+    let imgUrl = matches.find(m => m[1].includes('Jumbobog'))?.[1] || matches[0][1];
 
     if (imgUrl.startsWith('//')) {
       imgUrl = 'https:' + imgUrl;
+    } else if (imgUrl.startsWith('/')) {
+      imgUrl = 'https://comicwiki.dk' + imgUrl;
+    } else if (!imgUrl.startsWith('http')) {
+      throw "invalid image url";
     }
 
     await downloadFile(imgUrl, file);
-
     return serveFile(res, file, "image/jpeg");
 
   } catch (e) {
-    console.log("Cover fejl:", id, e);
-
-    // 🔥 STABIL FALLBACK (ALTID BILLEDE)
+    console.log("Cover fallback:", id);
     res.writeHead(200, { "Content-Type": "text/html" });
     return res.end(`<img src="https://picsum.photos/300/450?random=${id}" />`);
   }

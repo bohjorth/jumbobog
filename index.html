@@ -1,121 +1,28 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Jumbo V9</title>
+<meta charset="UTF-8">
+<title>Jumbobog Samling</title>
 <style>
-body{background:#111;color:#fff;font-family:sans-serif}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px}
-.card{background:#222;padding:5px;cursor:pointer}
-img{width:100%}
-.panel{position:fixed;bottom:0;left:0;right:0;background:#222;padding:10px;display:none}
+body { background:#111; color:#fff; font-family:sans-serif; }
+.grid { display:grid; grid-template-columns:repeat(auto-fill,120px); gap:10px; }
+.card { background:#222; padding:5px; text-align:center; }
+img { width:100%; height:160px; object-fit:cover; }
 </style>
 </head>
 <body>
-
-<input id="search" placeholder="Søg..." />
-<div id="grid" class="grid"></div>
-<div id="panel" class="panel"></div>
+<h1>Jumbobog Samling</h1>
+<div class="grid" id="grid"></div>
 
 <script>
-let data = {};
-let current=null;
+const grid = document.getElementById('grid');
 
-async function load(){
-  let res = await fetch("/api/jumbo");
-  data = await res.json();
-  render();
+for(let i=1;i<=200;i++){
+  const div = document.createElement('div');
+  div.className = 'card';
+  div.innerHTML = `<img src="/api/cover/${i}" /><div>#${i}</div>`;
+  grid.appendChild(div);
 }
-
-async function save(){
-  await fetch("/api/jumbo", {
-    method:"POST",
-    body: JSON.stringify(data)
-  });
-}
-
-const TOTAL=200;
-const grid=document.getElementById("grid");
-const search=document.getElementById("search");
-const panel=document.getElementById("panel");
-
-function cover(id){
-  return `/api/cover/${id}`;
-}
-
-function render(f=""){
-  grid.innerHTML="";
-  for(let i=1;i<=TOTAL;i++){
-    if(f && !i.toString().includes(f)) continue;
-
-    let owned = data[i]?.owned ? "🟢" : "⚪";
-
-    let d=document.createElement("div");
-    d.className="card";
-    d.onclick=()=>openEdit(i);
-    d.innerHTML=`
-      <img src="${cover(i)}">
-      <div>${owned} ${i}</div>
-    `;
-    grid.appendChild(d);
-  }
-}
-
-function openEdit(id){
-  current=id;
-  let d=data[id]||{};
-  panel.style.display="block";
-  panel.innerHTML=`
-    <h3>#${id}</h3>
-    <button onclick="toggleOwned()">Har den</button><br>
-    Variant:
-    <select onchange="setVariant(this.value)">
-      <option ${d.variant=='A'?'selected':''}>A</option>
-      <option ${d.variant=='B'?'selected':''}>B</option>
-      <option ${d.variant=='C'?'selected':''}>C</option>
-    </select><br>
-    Stand:
-    <select onchange="setCondition(this.value)">
-      <option ${d.condition=='Mint'?'selected':''}>Mint</option>
-      <option ${d.condition=='Fin'?'selected':''}>Fin</option>
-      <option ${d.condition=='Slidt'?'selected':''}>Slidt</option>
-    </select><br>
-    Note:<br>
-    <textarea oninput="setNote(this.value)">${d.note||''}</textarea><br>
-    <button onclick="closePanel()">Luk</button>
-  `;
-}
-
-function toggleOwned(){
-  data[current]=data[current]||{};
-  data[current].owned=!data[current].owned;
-  save(); render();
-}
-
-function setVariant(v){
-  data[current]=data[current]||{};
-  data[current].variant=v;
-  save();
-}
-
-function setCondition(v){
-  data[current]=data[current]||{};
-  data[current].condition=v;
-  save();
-}
-
-function setNote(v){
-  data[current]=data[current]||{};
-  data[current].note=v;
-  save();
-}
-
-function closePanel(){
-  panel.style.display="none";
-}
-
-search.oninput=()=>render(search.value);
-load();
 </script>
 
 </body>
