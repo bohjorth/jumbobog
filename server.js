@@ -66,8 +66,10 @@ async function getRealCover(id, res) {
 
   } catch (e) {
     console.log("Cover fallback:", id);
-    res.writeHead(200, { "Content-Type": "text/html" });
-    return res.end(`<img src="https://picsum.photos/300/450?random=${id}" />`);
+    res.writeHead(302, {
+      Location: `https://picsum.photos/300/450?random=${id}`
+    });
+    return res.end();
   }
 }
 
