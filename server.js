@@ -1,116 +1,245 @@
+
 const http = require('http');
-const fs = require('fs');
-const path = require('path');
-const https = require('https');
+
+const covers = {
+  "1": "https://picsum.photos/300/450?random=1",
+  "2": "https://picsum.photos/300/450?random=2",
+  "3": "https://picsum.photos/300/450?random=3",
+  "4": "https://picsum.photos/300/450?random=4",
+  "5": "https://picsum.photos/300/450?random=5",
+  "6": "https://picsum.photos/300/450?random=6",
+  "7": "https://picsum.photos/300/450?random=7",
+  "8": "https://picsum.photos/300/450?random=8",
+  "9": "https://picsum.photos/300/450?random=9",
+  "10": "https://picsum.photos/300/450?random=10",
+  "11": "https://picsum.photos/300/450?random=11",
+  "12": "https://picsum.photos/300/450?random=12",
+  "13": "https://picsum.photos/300/450?random=13",
+  "14": "https://picsum.photos/300/450?random=14",
+  "15": "https://picsum.photos/300/450?random=15",
+  "16": "https://picsum.photos/300/450?random=16",
+  "17": "https://picsum.photos/300/450?random=17",
+  "18": "https://picsum.photos/300/450?random=18",
+  "19": "https://picsum.photos/300/450?random=19",
+  "20": "https://picsum.photos/300/450?random=20",
+  "21": "https://picsum.photos/300/450?random=21",
+  "22": "https://picsum.photos/300/450?random=22",
+  "23": "https://picsum.photos/300/450?random=23",
+  "24": "https://picsum.photos/300/450?random=24",
+  "25": "https://picsum.photos/300/450?random=25",
+  "26": "https://picsum.photos/300/450?random=26",
+  "27": "https://picsum.photos/300/450?random=27",
+  "28": "https://picsum.photos/300/450?random=28",
+  "29": "https://picsum.photos/300/450?random=29",
+  "30": "https://picsum.photos/300/450?random=30",
+  "31": "https://picsum.photos/300/450?random=31",
+  "32": "https://picsum.photos/300/450?random=32",
+  "33": "https://picsum.photos/300/450?random=33",
+  "34": "https://picsum.photos/300/450?random=34",
+  "35": "https://picsum.photos/300/450?random=35",
+  "36": "https://picsum.photos/300/450?random=36",
+  "37": "https://picsum.photos/300/450?random=37",
+  "38": "https://picsum.photos/300/450?random=38",
+  "39": "https://picsum.photos/300/450?random=39",
+  "40": "https://picsum.photos/300/450?random=40",
+  "41": "https://picsum.photos/300/450?random=41",
+  "42": "https://picsum.photos/300/450?random=42",
+  "43": "https://picsum.photos/300/450?random=43",
+  "44": "https://picsum.photos/300/450?random=44",
+  "45": "https://picsum.photos/300/450?random=45",
+  "46": "https://picsum.photos/300/450?random=46",
+  "47": "https://picsum.photos/300/450?random=47",
+  "48": "https://picsum.photos/300/450?random=48",
+  "49": "https://picsum.photos/300/450?random=49",
+  "50": "https://picsum.photos/300/450?random=50",
+  "51": "https://picsum.photos/300/450?random=51",
+  "52": "https://picsum.photos/300/450?random=52",
+  "53": "https://picsum.photos/300/450?random=53",
+  "54": "https://picsum.photos/300/450?random=54",
+  "55": "https://picsum.photos/300/450?random=55",
+  "56": "https://picsum.photos/300/450?random=56",
+  "57": "https://picsum.photos/300/450?random=57",
+  "58": "https://picsum.photos/300/450?random=58",
+  "59": "https://picsum.photos/300/450?random=59",
+  "60": "https://picsum.photos/300/450?random=60",
+  "61": "https://picsum.photos/300/450?random=61",
+  "62": "https://picsum.photos/300/450?random=62",
+  "63": "https://picsum.photos/300/450?random=63",
+  "64": "https://picsum.photos/300/450?random=64",
+  "65": "https://picsum.photos/300/450?random=65",
+  "66": "https://picsum.photos/300/450?random=66",
+  "67": "https://picsum.photos/300/450?random=67",
+  "68": "https://picsum.photos/300/450?random=68",
+  "69": "https://picsum.photos/300/450?random=69",
+  "70": "https://picsum.photos/300/450?random=70",
+  "71": "https://picsum.photos/300/450?random=71",
+  "72": "https://picsum.photos/300/450?random=72",
+  "73": "https://picsum.photos/300/450?random=73",
+  "74": "https://picsum.photos/300/450?random=74",
+  "75": "https://picsum.photos/300/450?random=75",
+  "76": "https://picsum.photos/300/450?random=76",
+  "77": "https://picsum.photos/300/450?random=77",
+  "78": "https://picsum.photos/300/450?random=78",
+  "79": "https://picsum.photos/300/450?random=79",
+  "80": "https://picsum.photos/300/450?random=80",
+  "81": "https://picsum.photos/300/450?random=81",
+  "82": "https://picsum.photos/300/450?random=82",
+  "83": "https://picsum.photos/300/450?random=83",
+  "84": "https://picsum.photos/300/450?random=84",
+  "85": "https://picsum.photos/300/450?random=85",
+  "86": "https://picsum.photos/300/450?random=86",
+  "87": "https://picsum.photos/300/450?random=87",
+  "88": "https://picsum.photos/300/450?random=88",
+  "89": "https://picsum.photos/300/450?random=89",
+  "90": "https://picsum.photos/300/450?random=90",
+  "91": "https://picsum.photos/300/450?random=91",
+  "92": "https://picsum.photos/300/450?random=92",
+  "93": "https://picsum.photos/300/450?random=93",
+  "94": "https://picsum.photos/300/450?random=94",
+  "95": "https://picsum.photos/300/450?random=95",
+  "96": "https://picsum.photos/300/450?random=96",
+  "97": "https://picsum.photos/300/450?random=97",
+  "98": "https://picsum.photos/300/450?random=98",
+  "99": "https://picsum.photos/300/450?random=99",
+  "100": "https://picsum.photos/300/450?random=100",
+  "101": "https://picsum.photos/300/450?random=101",
+  "102": "https://picsum.photos/300/450?random=102",
+  "103": "https://picsum.photos/300/450?random=103",
+  "104": "https://picsum.photos/300/450?random=104",
+  "105": "https://picsum.photos/300/450?random=105",
+  "106": "https://picsum.photos/300/450?random=106",
+  "107": "https://picsum.photos/300/450?random=107",
+  "108": "https://picsum.photos/300/450?random=108",
+  "109": "https://picsum.photos/300/450?random=109",
+  "110": "https://picsum.photos/300/450?random=110",
+  "111": "https://picsum.photos/300/450?random=111",
+  "112": "https://picsum.photos/300/450?random=112",
+  "113": "https://picsum.photos/300/450?random=113",
+  "114": "https://picsum.photos/300/450?random=114",
+  "115": "https://picsum.photos/300/450?random=115",
+  "116": "https://picsum.photos/300/450?random=116",
+  "117": "https://picsum.photos/300/450?random=117",
+  "118": "https://picsum.photos/300/450?random=118",
+  "119": "https://picsum.photos/300/450?random=119",
+  "120": "https://picsum.photos/300/450?random=120",
+  "121": "https://picsum.photos/300/450?random=121",
+  "122": "https://picsum.photos/300/450?random=122",
+  "123": "https://picsum.photos/300/450?random=123",
+  "124": "https://picsum.photos/300/450?random=124",
+  "125": "https://picsum.photos/300/450?random=125",
+  "126": "https://picsum.photos/300/450?random=126",
+  "127": "https://picsum.photos/300/450?random=127",
+  "128": "https://picsum.photos/300/450?random=128",
+  "129": "https://picsum.photos/300/450?random=129",
+  "130": "https://picsum.photos/300/450?random=130",
+  "131": "https://picsum.photos/300/450?random=131",
+  "132": "https://picsum.photos/300/450?random=132",
+  "133": "https://picsum.photos/300/450?random=133",
+  "134": "https://picsum.photos/300/450?random=134",
+  "135": "https://picsum.photos/300/450?random=135",
+  "136": "https://picsum.photos/300/450?random=136",
+  "137": "https://picsum.photos/300/450?random=137",
+  "138": "https://picsum.photos/300/450?random=138",
+  "139": "https://picsum.photos/300/450?random=139",
+  "140": "https://picsum.photos/300/450?random=140",
+  "141": "https://picsum.photos/300/450?random=141",
+  "142": "https://picsum.photos/300/450?random=142",
+  "143": "https://picsum.photos/300/450?random=143",
+  "144": "https://picsum.photos/300/450?random=144",
+  "145": "https://picsum.photos/300/450?random=145",
+  "146": "https://picsum.photos/300/450?random=146",
+  "147": "https://picsum.photos/300/450?random=147",
+  "148": "https://picsum.photos/300/450?random=148",
+  "149": "https://picsum.photos/300/450?random=149",
+  "150": "https://picsum.photos/300/450?random=150",
+  "151": "https://picsum.photos/300/450?random=151",
+  "152": "https://picsum.photos/300/450?random=152",
+  "153": "https://picsum.photos/300/450?random=153",
+  "154": "https://picsum.photos/300/450?random=154",
+  "155": "https://picsum.photos/300/450?random=155",
+  "156": "https://picsum.photos/300/450?random=156",
+  "157": "https://picsum.photos/300/450?random=157",
+  "158": "https://picsum.photos/300/450?random=158",
+  "159": "https://picsum.photos/300/450?random=159",
+  "160": "https://picsum.photos/300/450?random=160",
+  "161": "https://picsum.photos/300/450?random=161",
+  "162": "https://picsum.photos/300/450?random=162",
+  "163": "https://picsum.photos/300/450?random=163",
+  "164": "https://picsum.photos/300/450?random=164",
+  "165": "https://picsum.photos/300/450?random=165",
+  "166": "https://picsum.photos/300/450?random=166",
+  "167": "https://picsum.photos/300/450?random=167",
+  "168": "https://picsum.photos/300/450?random=168",
+  "169": "https://picsum.photos/300/450?random=169",
+  "170": "https://picsum.photos/300/450?random=170",
+  "171": "https://picsum.photos/300/450?random=171",
+  "172": "https://picsum.photos/300/450?random=172",
+  "173": "https://picsum.photos/300/450?random=173",
+  "174": "https://picsum.photos/300/450?random=174",
+  "175": "https://picsum.photos/300/450?random=175",
+  "176": "https://picsum.photos/300/450?random=176",
+  "177": "https://picsum.photos/300/450?random=177",
+  "178": "https://picsum.photos/300/450?random=178",
+  "179": "https://picsum.photos/300/450?random=179",
+  "180": "https://picsum.photos/300/450?random=180",
+  "181": "https://picsum.photos/300/450?random=181",
+  "182": "https://picsum.photos/300/450?random=182",
+  "183": "https://picsum.photos/300/450?random=183",
+  "184": "https://picsum.photos/300/450?random=184",
+  "185": "https://picsum.photos/300/450?random=185",
+  "186": "https://picsum.photos/300/450?random=186",
+  "187": "https://picsum.photos/300/450?random=187",
+  "188": "https://picsum.photos/300/450?random=188",
+  "189": "https://picsum.photos/300/450?random=189",
+  "190": "https://picsum.photos/300/450?random=190",
+  "191": "https://picsum.photos/300/450?random=191",
+  "192": "https://picsum.photos/300/450?random=192",
+  "193": "https://picsum.photos/300/450?random=193",
+  "194": "https://picsum.photos/300/450?random=194",
+  "195": "https://picsum.photos/300/450?random=195",
+  "196": "https://picsum.photos/300/450?random=196",
+  "197": "https://picsum.photos/300/450?random=197",
+  "198": "https://picsum.photos/300/450?random=198",
+  "199": "https://picsum.photos/300/450?random=199",
+  "200": "https://picsum.photos/300/450?random=200"
+};
 
 const port = 8080;
-const dataFile = path.join(__dirname, 'data.json');
-const coverDir = path.join(__dirname, 'covers');
-
-if (!fs.existsSync(coverDir)) fs.mkdirSync(coverDir);
-
-function serveFile(res, filePath, type="text/html"){
-  fs.readFile(filePath, (err,data)=>{
-    if(err){ res.writeHead(404); return res.end("Not found"); }
-    res.writeHead(200, {"Content-Type": type});
-    res.end(data);
-  });
-}
-
-function fetchPage(url) {
-  return new Promise((resolve, reject) => {
-    https.get(url, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => resolve(data));
-    }).on('error', reject);
-  });
-}
-
-function downloadFile(url, filePath) {
-  return new Promise((resolve, reject) => {
-    const file = fs.createWriteStream(filePath);
-    https.get(url, (res) => {
-      res.pipe(file);
-      file.on('finish', () => file.close(resolve));
-    }).on('error', reject);
-  });
-}
-
-async function getRealCover(id, res) {
-  const file = path.join(coverDir, id + '.jpg');
-
-  if (fs.existsSync(file)) {
-    return serveFile(res, file, "image/jpeg");
-  }
-
-  try {
-    const url = `https://comicwiki.dk/wiki/Jumbobog_${id}`;
-    const html = await fetchPage(url);
-
-    const matches = [...html.matchAll(/<img[^>]+src="([^"]+)"/g)];
-    if (!matches.length) throw "no image";
-
-    let imgUrl = matches.find(m => m[1].includes('Jumbobog'))?.[1] || matches[0][1];
-
-    if (imgUrl.startsWith('//')) {
-      imgUrl = 'https:' + imgUrl;
-    } else if (imgUrl.startsWith('/')) {
-      imgUrl = 'https://comicwiki.dk' + imgUrl;
-    } else if (!imgUrl.startsWith('http')) {
-      throw "invalid image url";
-    }
-
-    await downloadFile(imgUrl, file);
-    return serveFile(res, file, "image/jpeg");
-
-  } catch (e) {
-    console.log("Cover fallback:", id);
-    res.writeHead(302, {
-      Location: `https://picsum.photos/300/450?random=${id}`
-    });
-    return res.end();
-  }
-}
 
 http.createServer((req,res)=>{
 
-  if(req.url === '/api/jumbo' && req.method === 'GET'){
-    fs.readFile(dataFile, (err,data)=>{
-      res.writeHead(200, {"Content-Type":"application/json"});
-      res.end(data);
-    });
-    return;
-  }
-
-  if(req.url === '/api/jumbo' && req.method === 'POST'){
-    let body="";
-    req.on('data', chunk => body+=chunk);
-    req.on('end', ()=>{
-      fs.writeFileSync(dataFile, body);
-      res.writeHead(200);
-      res.end("OK");
-    });
-    return;
-  }
-
   if(req.url.startsWith('/api/cover/')){
     const id = req.url.split('/').pop();
-    return getRealCover(id, res);
+    const url = covers[id] || 'https://picsum.photos/300/450';
+    res.writeHead(302, { Location: url });
+    return res.end();
   }
 
-  let file = req.url === '/' ? '/index.html' : req.url;
-  let filePath = path.join(__dirname, file);
-  let ext = path.extname(filePath);
+  if(req.url === '/'){
+    res.writeHead(200, {'Content-Type':'text/html'});
+    return res.end(`<!DOCTYPE html>
+<html>
+<head>
+<style>
+body { background:#111; color:#fff; font-family:sans-serif; }
+.grid { display:grid; grid-template-columns:repeat(auto-fill,120px); gap:10px; }
+.card { background:#222; padding:5px; text-align:center; }
+img { width:100%; height:160px; object-fit:cover; }
+</style>
+</head>
+<body>
+<h1>Jumbobog Samling</h1>
+<div class="grid" id="grid"></div>
+<script>
+for(let i=1;i<=200;i++) {
+  const div = document.createElement('div');
+  div.className='card';
+  div.innerHTML = `<img src="/api/cover/${i}" /><div>#${i}</div>`;
+  document.getElementById('grid').appendChild(div);
+}
+</script>
+</body>
+</html>`);
+  }
 
-  let types = {
-    ".js":"text/javascript",
-    ".css":"text/css",
-    ".json":"application/json",
-    ".jpg":"image/jpeg",
-    ".png":"image/png"
-  };
-
-  serveFile(res, filePath, types[ext] || "text/html");
-
-}).listen(port, ()=>console.log("Running on "+port));
+}).listen(port, ()=>console.log("Running v11 on "+port));
