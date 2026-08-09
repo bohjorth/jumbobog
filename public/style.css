@@ -178,9 +178,29 @@ a { color: var(--blue); }
   font-family: inherit; background: var(--teal); color: #fff;
   border: 2px solid var(--ink); border-radius: 5px; cursor: pointer; white-space: nowrap;
 }
+.add-copy-btn-empty {
+  background: var(--red);
+  box-shadow: var(--card-shadow-sm);
+}
 .add-copy-btn:active { transform: translate(1px, 1px); }
 
+.book-card-actions {
+  display: flex; align-items: center; gap: 10px; margin-top: 6px;
+}
+.find-link {
+  font-size: 11.5px; font-family: Georgia, serif; font-style: italic;
+  color: var(--blue); text-decoration: underline;
+}
+.copy-link-btn {
+  padding: 3px 8px; font-size: 10.5px; font-weight: 700;
+  font-family: 'Courier New', ui-monospace, monospace;
+  background: #fff; border: 1.5px solid var(--line); border-radius: 4px;
+  cursor: pointer; color: var(--ink-soft);
+}
+.copy-link-btn:active { transform: translate(1px, 1px); }
+
 .copies-list { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+.copies-hint { font-size: 12px; color: var(--ink-soft); font-family: Georgia, serif; font-style: italic; }
 .copy-row {
   display: grid;
   grid-template-columns: 1.3fr 1fr 150px 26px;

@@ -46,6 +46,33 @@
   let state = { entries: {}, extras: [] };
   let ui = { search: "", onlyOwned: false, openGroups: new Set(), showImport: false, showSources: false };
 
+  function copyToClipboard(text, btn) {
+    const done = () => {
+      const original = btn.textContent;
+      btn.textContent = "Kopieret!";
+      setTimeout(() => { btn.textContent = original; }, 1400);
+    };
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy(text, done));
+    } else {
+      fallbackCopy(text, done);
+    }
+  }
+  function fallbackCopy(text, done) {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.left = "-9999px";
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); done(); } catch (e) {}
+    document.body.removeChild(ta);
+  }
+  function coverSearchUrl(num, title) {
+    const q = `Jumbobog nr. ${num}${title ? " " + title : ""} forside`;
+    return `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(q)}`;
+  }
+
   let saveTimers = {};
   function scheduleSaveTitle(num) {
     clearTimeout(saveTimers["t" + num]);
@@ -360,12 +387,23 @@
       scheduleSaveTitle(num);
     });
 
-    const addBtn = el("button", { class: "add-copy-btn", text: "+ Eksemplar" });
+    const addBtn = el("button", { class: "add-copy-btn" + (owned ? "" : " add-copy-btn-empty"), text: owned ? "+ Eksemplar" : "+ Jeg ejer denne" });
     const copiesBox = el("div", { class: "copies-list" });
+
+    const findLink = el("a", {
+      class: "find-link", text: "🔍 Find omslag", target: "_blank", rel: "noreferrer",
+      href: coverSearchUrl(num, e.title),
+    });
+    const copyBtn = el("button", { class: "copy-link-btn", text: "Kopiér link" });
+    copyBtn.addEventListener("click", () => copyToClipboard(coverSearchUrl(num, e.title), copyBtn));
+    titleInput.addEventListener("input", () => { findLink.href = coverSearchUrl(num, e.title); });
 
     function renderCopies() {
       copiesBox.innerHTML = "";
-      if (e.copies.length === 0) return;
+      if (e.copies.length === 0) {
+        copiesBox.appendChild(el("div", { class: "copies-hint", text: "Ingen eksemplarer registreret endnu — tryk “+ Jeg ejer denne” hvis du har den." }));
+        return;
+      }
       e.copies.forEach((copy) => copiesBox.appendChild(buildCopyRow(num, e, copy, refreshCard)));
     }
     function refreshCard() {
@@ -373,6 +411,8 @@
       updateBar(barRefs[num], e);
       barRefs[num].title = `Nr. ${num}${e.title ? " – " + e.title : ""}${e.copies.length ? ` (${e.copies.length} stk.)` : ""}`;
       countBadge.textContent = e.copies.length ? `${e.copies.length} stk.` : "0 stk.";
+      addBtn.textContent = e.copies.length > 0 ? "+ Eksemplar" : "+ Jeg ejer denne";
+      addBtn.classList.toggle("add-copy-btn-empty", e.copies.length === 0);
       renderHeader();
     }
 
@@ -392,7 +432,9 @@
     });
 
     const head = el("div", { class: "book-card-head" }, [numBadge, titleInput, countBadge, addBtn]);
+    const actions = el("div", { class: "book-card-actions" }, [findLink, copyBtn]);
     card.appendChild(head);
+    card.appendChild(actions);
     card.appendChild(copiesBox);
     renderCopies();
     return card;
