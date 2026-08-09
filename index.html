@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Jumbo V7</title>
+<title>Jumbo V9</title>
 <style>
 body{background:#111;color:#fff;font-family:sans-serif}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px}
@@ -15,7 +15,6 @@ img{width:100%}
 
 <input id="search" placeholder="Søg..." />
 <div id="grid" class="grid"></div>
-
 <div id="panel" class="panel"></div>
 
 <script>
@@ -35,13 +34,13 @@ async function save(){
   });
 }
 
-const TOTAL=100;
+const TOTAL=200;
 const grid=document.getElementById("grid");
 const search=document.getElementById("search");
 const panel=document.getElementById("panel");
 
 function cover(id){
-  return `/covers/${id}.jpg`;
+  return `/api/cover/${id}`;
 }
 
 function render(f=""){
@@ -55,7 +54,7 @@ function render(f=""){
     d.className="card";
     d.onclick=()=>openEdit(i);
     d.innerHTML=`
-      <img src="${cover(i)}" onerror="this.src='https://picsum.photos/200/300?random=${i}'">
+      <img src="${cover(i)}">
       <div>${owned} ${i}</div>
     `;
     grid.appendChild(d);
